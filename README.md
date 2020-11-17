@@ -1,6 +1,6 @@
 # reposcraper
 
-A program to search into your own repositories from Github, Gitlab, and Bitbucket
+A program to search into your own repositories from Github, Gitlab, and Bitbucket.
 
 ## How to use it
 
@@ -22,6 +22,17 @@ After that, you can start to use the program simply by typing:
 ```bash
 go run .
 ```
+
+You can also build the executable and then use it:
+
+```bash
+go build
+./reposcraper
+```
+
+After the program collected all the repositories information (name and description, if it is private or not),
+you can type to search for a repository and select it from the suggestions. 
+Select the correct response by pressing enter and the program will try to open the repository in the browser using its URL.
 
 ### Requirements
 
@@ -52,4 +63,12 @@ Then, you can compile the config file with the proper information:
         "secret": "bbb"
     }
 }
+```
+
+### Make binaries
+
+```bash
+git clone https://github.com/MircoT/reposcraper.git
+cd reposcraper
+go build
 ```

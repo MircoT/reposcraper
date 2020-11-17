@@ -59,7 +59,7 @@ var (
 			selection := prompt.Input("What are you searching for? > ", wrapCompleter(scraper))
 
 			if selection != "" {
-				fmt.Println("Opening " + selection)
+				fmt.Println("Opening " + selection + " ...")
 				scraper.OpenURL(selection)
 			} else {
 				fmt.Println("What you're searching for is not there...")
