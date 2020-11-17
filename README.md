@@ -37,7 +37,7 @@ Select the correct response by pressing enter and the program will try to open t
 By default, the program search also the repository you starred.
 To search for a specific type, use the flag `type`:
 
-```bash
+```
 Search for a repository that you own or you starred
 
 Usage:
