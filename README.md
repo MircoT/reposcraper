@@ -34,6 +34,21 @@ After the program collected all the repositories information (name and descripti
 you can type to search for a repository and select it from the suggestions. 
 Select the correct response by pressing enter and the program will try to open the repository in the browser using its URL.
 
+By default, the program search also the repository you starred.
+To search for a specific type, use the flag `type`:
+
+```bash
+Search for a repository that you own or you starred
+
+Usage:
+  reposcraper [flags]
+
+Flags:
+      --config string   config file (default "./config.json")
+  -h, --help            help for reposcraper
+      --type string     search type: [all, starred, owned] (default "all")
+```
+
 ### Requirements
 
 The program needs the following token from the various services:

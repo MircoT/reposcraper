@@ -31,8 +31,8 @@ var (
 	cfgFile    string            //nolint:gochecknoglobals
 	searchType string            //nolint:gochecknoglobals
 	rootCmd    = &cobra.Command{ //nolint:exhaustivestruct,gochecknoglobals
-		Use:   "scraper",
-		Short: "Search for a repository that you own or you starred",
+		Use:   "reposcraper",
+		Short: "A program to search into your own repositories from Github, Gitlab, and Bitbucket.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			scraper := Scraper{}
 			spin := spinner.New(spinner.CharSets[28], spinnerDt)
