@@ -1,6 +1,6 @@
 # reposcraper
 
-A program to search into your own repositories from Github, Gitlab, and Bitbucket.
+A program to search into your own repositories from Github, Gitlab, and Bitbucket written in Go.
 
 ## How to use it
 
