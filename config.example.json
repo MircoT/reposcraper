@@ -1,0 +1,15 @@
+{
+    "github": {
+        "username": "user",
+        "token": "yyy"
+    },
+    "gitlab": {
+        "username": "user",
+        "token": "zzz"
+    },
+    "bitbucket": {
+        "username": "user",
+        "key": "aaa",
+        "secret": "bbb"
+    }
+}
