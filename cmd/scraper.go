@@ -283,7 +283,7 @@ func (s *Scraper) Collect() { //nolint:funlen
 		case "GitLab":
 			s.Counters.GitHub++
 		case "Bitbucket":
-			s.Counters.GitLab++
+			s.Counters.Bitbucket++
 		}
 	}
 }
