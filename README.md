@@ -88,6 +88,8 @@ Then, you can compile the config file with the proper information:
 }
 ```
 
+> **Note**: if a service is missing it will not be used.
+
 ### Make your own binary
 
 ```bash
