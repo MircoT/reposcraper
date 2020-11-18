@@ -2,6 +2,14 @@
 
 A program to search into your own repositories from Github, Gitlab, and Bitbucket written in Go.
 
+## Get the program
+
+```bash
+go get github.com/MircoT/reposcraper
+```
+
+If you have correctly configured [Go](https://golang.org/), just use `reposcraper` from the command line and puts the configuration file in your home folder `$HOME/.reposcraper/config.json`. Read the following documentation for the configuration file.
+
 ## How to use it
 
 Edit the `config.example.json` and rename it `config.json`.
