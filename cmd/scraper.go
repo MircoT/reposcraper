@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -28,9 +29,11 @@ const (
 
 var (
 	// Used for flags.
-	cfgFile    string            //nolint:gochecknoglobals
-	searchType string            //nolint:gochecknoglobals
-	rootCmd    = &cobra.Command{ //nolint:exhaustivestruct,gochecknoglobals
+	cfgFile    string //nolint:gochecknoglobals
+	searchType string //nolint:gochecknoglobals
+
+	// rootCmd the reposcraper command
+	rootCmd = &cobra.Command{ //nolint:exhaustivestruct,gochecknoglobals
 		Use:   "reposcraper",
 		Short: "A program to search into your own repositories from Github, Gitlab, and Bitbucket.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -59,8 +62,8 @@ var (
 			selection := prompt.Input("What are you searching for? > ", wrapCompleter(scraper))
 
 			if selection != "" {
-				fmt.Println("Opening " + selection + " ...")
-				scraper.OpenURL(selection)
+				fmt.Printf("Opening %s -> %s\n", selection, scraper.selectedURL(selection))
+				openBrowser(scraper.selectedURL(selection))
 			} else {
 				fmt.Println("What you're searching for is not there...")
 			}
@@ -70,13 +73,20 @@ var (
 	}
 )
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+// init of the cobra root command and viper configuration
+func init() { //nolint: gochecknoinits
+	cobra.OnInitialize(initConfig)
+
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "./config.json", "config file")
+	rootCmd.PersistentFlags().StringVar(&searchType, "type", "all", "search type: [all, starred, owned]")
+
+	viper.SetConfigName("config")
+	viper.SetConfigType("json")
+	viper.AddConfigPath("$HOME/.reposcraper")
+	viper.AddConfigPath(".")
 }
 
+// initConfig of viper
 func initConfig() {
 	if cfgFile != "" {
 		// Use config file from the flag.
@@ -98,6 +108,15 @@ func initConfig() {
 	}
 }
 
+// Execute of the reposcraper command
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+// wrapCompleter creates the suggestions from the repositories of the Scraper
 func wrapCompleter(scraper Scraper) func(d prompt.Document) []prompt.Suggest {
 	newFunc := func(d prompt.Document) []prompt.Suggest {
 		suggestions := make([]prompt.Suggest, 0, len(scraper.Repositories))
@@ -120,18 +139,7 @@ func wrapCompleter(scraper Scraper) func(d prompt.Document) []prompt.Suggest {
 	return newFunc
 }
 
-func init() { //nolint: gochecknoinits
-	cobra.OnInitialize(initConfig)
-
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "./config.json", "config file")
-	rootCmd.PersistentFlags().StringVar(&searchType, "type", "all", "search type: [all, starred, owned]")
-
-	viper.SetConfigName("config")
-	viper.SetConfigType("json")
-	viper.AddConfigPath("$HOME/.reposcraper")
-	viper.AddConfigPath(".")
-}
-
+// ScraperRepo interface contract for a service
 type ScraperRepo interface {
 	GetName() string
 	GetDescription() string
@@ -140,6 +148,7 @@ type ScraperRepo interface {
 	GetType() string
 }
 
+// ServiceConfig for a single service of the Scraper
 type ServiceConfig struct {
 	Username string `json:"username"`
 	Token    string `json:"token"`
@@ -147,12 +156,14 @@ type ServiceConfig struct {
 	Secret   string `json:"secret"`
 }
 
+// Config of the Scraper
 type Config struct {
 	GitHub    *ServiceConfig `json:"github,omitempty"`
 	GitLab    *ServiceConfig `json:"gitlab,omitempty"`
 	Bitbucket *ServiceConfig `json:"bitbucket,omitempty"`
 }
 
+// Scraper base structure
 type Scraper struct {
 	config       Config
 	Repositories []ScraperRepo
@@ -163,7 +174,8 @@ type Scraper struct {
 	}
 }
 
-func openbrowser(url string) {
+// openBrowser opens the system browser with the given URL
+func openBrowser(url string) {
 	var err error
 
 	switch runtime.GOOS {
@@ -182,14 +194,22 @@ func openbrowser(url string) {
 	}
 }
 
-func (s Scraper) OpenURL(name string) {
+// selectedURL returns the URL to open from the user selection
+func (s Scraper) selectedURL(name string) string {
+	resultURL := ""
+
 	for _, repo := range s.Repositories {
 		if repo.GetName() == name {
-			openbrowser(repo.GetURL())
+			resultURL = repo.GetURL()
+
+			break
 		}
 	}
+
+	return resultURL
 }
 
+// LoadConfig loads manually the Scraper configuration file (without using viper)
 func (s *Scraper) LoadConfig(filename string) error {
 	bytes, errIO := ioutil.ReadFile(filename)
 
@@ -208,87 +228,58 @@ func (s *Scraper) LoadConfig(filename string) error {
 	return nil
 }
 
+// insert a repo into the Scraper list
 func (s *Scraper) insert(repo ScraperRepo) {
 	s.Repositories = append(s.Repositories, repo)
 }
 
+// Collect all the repositories owned and starred by the user
 func (s *Scraper) Collect() { //nolint:funlen
-	github := make(chan ScraperRepo)
-	githubStarred := make(chan ScraperRepo)
-	gitlab := make(chan ScraperRepo)
-	gitlabStarred := make(chan ScraperRepo)
-	bitbucket := make(chan ScraperRepo)
-	githubDone := false
-	githubStarredDone := false
-	gitlabDone := false
-	gitlabStarredDone := false
-	bitbucketDone := false
+	buffer := make(chan ScraperRepo, 256)
+	wg := sync.WaitGroup{}
 
 	switch searchType {
 	case "all", "ALL":
-		go s.gitHubRepos(github, false)
-		go s.gitLabRepos(gitlab, false)
-		go s.bitbucketRepos(bitbucket)
-		go s.gitHubRepos(githubStarred, true)
-		go s.gitLabRepos(gitlabStarred, true)
+		wg.Add(5)
 
+		go s.gitHubRepos(buffer, &wg, false)
+		go s.gitLabRepos(buffer, &wg, false)
+		go s.bitbucketRepos(buffer, &wg)
+		go s.gitHubRepos(buffer, &wg, true)
+		go s.gitLabRepos(buffer, &wg, true)
 	case "owned", "OWNED":
-		go s.gitHubRepos(github, false)
-		go s.gitLabRepos(gitlab, false)
-		go s.bitbucketRepos(bitbucket)
+		wg.Add(3)
 
-		githubStarredDone = true
-		gitlabStarredDone = true
+		go s.gitHubRepos(buffer, &wg, false)
+		go s.gitLabRepos(buffer, &wg, false)
+		go s.bitbucketRepos(buffer, &wg)
 	case "starred", "STARRED":
-		go s.gitHubRepos(githubStarred, true)
-		go s.gitLabRepos(gitlabStarred, true)
+		wg.Add(2)
 
-		githubDone = true
-		gitlabDone = true
-		bitbucketDone = true
+		go s.gitHubRepos(buffer, &wg, true)
+		go s.gitLabRepos(buffer, &wg, true)
 	}
 
-	for !githubDone || !gitlabDone || !bitbucketDone || !githubStarredDone || !gitlabStarredDone {
-		select {
-		case repo, ok := <-github:
-			if ok {
-				s.insert(repo)
-				s.Counters.GitHub++
-			} else {
-				githubDone = true
-			}
-		case repo, ok := <-githubStarred:
-			if ok {
-				s.insert(repo)
-				s.Counters.GitHub++
-			} else {
-				githubStarredDone = true
-			}
-		case repo, ok := <-gitlab:
-			if ok {
-				s.insert(repo)
-				s.Counters.GitLab++
-			} else {
-				gitlabDone = true
-			}
-		case repo, ok := <-gitlabStarred:
-			if ok {
-				s.insert(repo)
-				s.Counters.GitLab++
-			} else {
-				gitlabStarredDone = true
-			}
-		case repo, ok := <-bitbucket:
-			if ok {
-				s.insert(repo)
-				s.Counters.Bitbucket++
-			} else {
-				bitbucketDone = true
-			}
+	go func(c chan ScraperRepo, wg *sync.WaitGroup) {
+		defer close(c)
+		wg.Wait()
+	}(buffer, &wg)
+
+	for repo := range buffer {
+		s.insert(repo)
+
+		switch repo.GetType() {
+		case "GitHub":
+			s.Counters.GitHub++
+		case "GitLab":
+			s.Counters.GitHub++
+		case "Bitbucket":
+			s.Counters.GitLab++
 		}
 	}
 }
 
+// bitbucketAllRepos returns all the repositories from bitbucket
 func bitbucketAllRepos(oauth BitbucketToken, config ServiceConfig) []BitbucketRepo {
 	tURL, errURLT := template.New("bitbucket-url").Parse("https://bitbucket.org/api/2.0/repositories/{{.Username}}")
 
@@ -346,13 +337,14 @@ func bitbucketAllRepos(oauth BitbucketToken, config ServiceConfig) []BitbucketRe
 	return result
 }
 
-func (s *Scraper) bitbucketRepos(c chan ScraperRepo) {
+// bitbucketRepos makes the token, starts the repository collections and sends them to the collector
+func (s *Scraper) bitbucketRepos(c chan ScraperRepo, wg *sync.WaitGroup) {
 	/* Source:
 	   - https://developer.atlassian.com/bitbucket/api/2/reference/meta/authentication
 	   - https://support.atlassian.com/bitbucket-cloud/docs/use-oauth-on-bitbucket-cloud/
 	   - https://support.atlassian.com/bitbucket-cloud/docs/oauth-consumer-examples/
 	*/
-	defer close(c)
+	defer wg.Done()
 
 	repositories := make([]BitbucketRepo, 0)
 
@@ -397,8 +389,9 @@ func (s *Scraper) bitbucketRepos(c chan ScraperRepo) {
 	}
 }
 
-func (s *Scraper) gitLabRepos(c chan ScraperRepo, starred bool) {
-	defer close(c)
+// gitLabRepos collects all the GitLab repositories, starred and owned
+func (s *Scraper) gitLabRepos(c chan ScraperRepo, wg *sync.WaitGroup, starred bool) { //nolint:funlen
+	defer wg.Done()
 
 	repositories := make([]GitLabRepo, 0)
 
@@ -407,6 +400,7 @@ func (s *Scraper) gitLabRepos(c chan ScraperRepo, starred bool) {
 			tURL    *template.Template
 			errURLT error
 		)
+
 		if !starred {
 			tURL, errURLT = template.New("gitlab-url").Parse("https://gitlab.com/api/v4/users/{{.Username}}/projects")
 		} else {
@@ -461,17 +455,19 @@ func (s *Scraper) gitLabRepos(c chan ScraperRepo, starred bool) {
 	}
 }
 
-func (s *Scraper) gitHubRepos(c chan ScraperRepo, starred bool) { //nolint:funlen
+// gitHubRepos collects all the GitHub repositories, starred and owned
+func (s *Scraper) gitHubRepos(c chan ScraperRepo, wg *sync.WaitGroup, starred bool) { //nolint:funlen,gocognit
 	/* Source
 	   - https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#list-repositories-for-the-authenticated-user
 	   - https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token
 	*/
-	defer close(c)
+	defer wg.Done()
 
 	repositories := make([]GitHubRepo, 0)
 
 	if s.config.GitHub != nil { // nolint:nestif
 		var ScraperURL string
+
 		page := 0
 
 		for {
@@ -489,6 +485,7 @@ func (s *Scraper) gitHubRepos(c chan ScraperRepo, starred bool) { //nolint:funle
 			} else {
 				ScraperURL = fmt.Sprintf("https://api.github.com/user/starred?per_page=100&page=%d", page)
 			}
+
 			TokenHeader := bytes.Buffer{}
 
 			tExe := tToken.Execute(&TokenHeader, s.config.GitHub)

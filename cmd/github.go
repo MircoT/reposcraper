@@ -1,5 +1,6 @@
 package cmd
 
+// GitHubRepo struct to unpack from GitHub response
 type GitHubRepo struct {
 	Name        string `json:"name"`
 	HTMLURL     string `json:"html_url"`

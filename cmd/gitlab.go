@@ -1,5 +1,6 @@
 package cmd
 
+// GitLabRepo struct to unpack from GitLab response
 type GitLabRepo struct {
 	Name        string `json:"name"`
 	WebURL      string `json:"web_url"`

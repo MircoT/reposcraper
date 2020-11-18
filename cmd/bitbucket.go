@@ -4,6 +4,7 @@ const (
 	bitBucketAccessTokenURL = "https://bitbucket.org/site/oauth2/access_token" //nolint:gosec
 )
 
+// BitbucketResp struct to unpack from Bitbucket response
 type BitbucketResp struct {
 	Pagelen int             `json="pagelen"`
 	Values  []BitbucketRepo `json="values"`
@@ -47,6 +48,7 @@ func (r BitbucketRepo) GetType() string {
 	return "Bitbucket"
 }
 
+// BitbucketToken struct used for the token request
 type BitbucketToken struct {
 	Scopes       string `json:"scopes"`
 	AccessToken  string `json:"access_token"`
