@@ -105,6 +105,8 @@ func initConfig() {
 
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	} else {
+		fmt.Println("WARNING: No configuration file found...")
 	}
 }
 
