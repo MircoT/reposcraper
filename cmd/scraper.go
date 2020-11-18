@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path"
 	"runtime"
 	"strings"
 	"sync"
@@ -82,7 +83,13 @@ func init() { //nolint: gochecknoinits
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("json")
-	viper.AddConfigPath("$HOME/.reposcraper")
+
+	home, err := homedir.Dir()
+	if err != nil {
+		panic(err)
+	}
+
+	viper.AddConfigPath(path.Join(home, ".reposcraper"))
 	viper.AddConfigPath(".")
 }
 
@@ -90,15 +97,13 @@ func init() { //nolint: gochecknoinits
 func initConfig() {
 	if cfgFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			panic(err)
+		if _, err := os.Stat(cfgFile); os.IsNotExist(err) {
+			if cfgFile != "./config.json" {
+				fmt.Printf("WARNING: Configuration file '%s' not exists\n", cfgFile)
+			}
+		} else {
+			viper.SetConfigFile(cfgFile)
 		}
-
-		viper.AddConfigPath(home)
 	}
 
 	viper.AutomaticEnv()
@@ -107,6 +112,8 @@ func initConfig() {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	} else {
 		fmt.Println("WARNING: No configuration file found...")
+		fmt.Println(err)
+		os.Exit(-1)
 	}
 }
 
