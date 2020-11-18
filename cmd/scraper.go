@@ -36,7 +36,7 @@ var (
 	// rootCmd the reposcraper command
 	rootCmd = &cobra.Command{ //nolint:exhaustivestruct,gochecknoglobals
 		Use:   "reposcraper",
-		Short: "A program to search into your own repositories from Github, Gitlab, and Bitbucket.",
+		Short: "A program to search for own repositories from Github, Gitlab, and Bitbucket written in Go.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			scraper := Scraper{}
 			spin := spinner.New(spinner.CharSets[28], spinnerDt)
