@@ -8,9 +8,9 @@ A program to search into your own repositories from Github, Gitlab, and Bitbucke
 go get github.com/MircoT/reposcraper
 ```
 
-If you have correctly configured [Go](https://golang.org/), just use `reposcraper` from the command line and puts the configuration file in your home folder `$HOME/.reposcraper/config.json`. Read the following documentation for the configuration file.
+If you have correctly configured [Go](https://golang.org/), just use `reposcraper` from the command line and puts the configuration file in your home folder `$HOME/.reposcraper/config.json`. Read the following documentation for the [configuration file requirements](#config-file-requirements).
 
-## How to use it
+## From source
 
 Edit the `config.example.json` and rename it `config.json`.
 You have to put the information for each service you want to use.
@@ -57,7 +57,7 @@ Flags:
       --type string     search type: [all, starred, owned] (default "all")
 ```
 
-### Requirements
+### Config file requirements
 
 The program needs the following token from the various services:
 
@@ -88,7 +88,7 @@ Then, you can compile the config file with the proper information:
 }
 ```
 
-### Make binaries
+### Make your own binary
 
 ```bash
 git clone https://github.com/MircoT/reposcraper.git
