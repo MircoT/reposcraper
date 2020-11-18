@@ -9,5 +9,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/viper v1.7.1
-	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f // indirect
+	golang.org/x/text v0.3.3 // indirect
 )
